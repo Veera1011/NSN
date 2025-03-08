@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Details</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Session management script
+        document.body.addEventListener('htmx:configRequest', function(evt) { /* Config logic */ });
+        document.body.addEventListener('htmx:afterSettle', function(evt) { /* Redirect logic */ });
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!document.cookie.split('; ').find(row => row.startsWith('session_id='))) {
+                window.location.href = '/student/login/';
+            }
+        });
+    </script>
+</head>
+<body class="bg-gray-50">
+    <header class="bg-[#002147] shadow">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-white">Hostellar details</h1>
+                    <p class="mt-1 text-sm text-white">Roll Number: {{ roll_number }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <a href="/student/dash/" class="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition duration-150">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span class="font-medium">Back to Dashboard</span>
+            </a>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6">Hostellar Details</h2>
+                <p class="text-sm text-gray-600 mb-6">Roll Number: {{ roll_number }}</p>
+                
+                <div id="form-container">
+                    {% include 'Student Details/Hostellar/host_form.html' %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
