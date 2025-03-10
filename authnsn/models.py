@@ -6,6 +6,11 @@ from django.db import models
 from django.core.validators import RegexValidator
 
 class Student(models.Model):
+    class Course(models.TextChoices):
+        BE = 'B.E', 'B.E'
+        ME = 'M.E', 'M.E'
+        PHD = 'PhD', 'PhD'
+        
     STUDENT_TYPE_CHOICES = [
         ('regular', 'Regular'),
         ('lateral', 'Lateral'),
@@ -14,6 +19,7 @@ class Student(models.Model):
 
     roll_number = models.CharField(max_length=20, unique=True)
     previous_roll_number = models.CharField(max_length=20, blank=True, null=True)
+    course = models.CharField(max_length=5, choices=Course.choices)
     student_type = models.CharField(max_length=10, choices=STUDENT_TYPE_CHOICES)
     previous_student_type = models.CharField(max_length=10, choices=STUDENT_TYPE_CHOICES, blank=True, null=True)
     date_of_birth = models.DateField()
