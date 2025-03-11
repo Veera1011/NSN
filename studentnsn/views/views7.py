@@ -16,6 +16,13 @@ from io import BytesIO
 from datetime import datetime
 import jwt
 import os
+import os
+from reportlab.platypus import Image
+from django.conf import settings
+from urllib.request import urlopen
+from PIL import Image as PILImage
+from reportlab.lib.utils import ImageReader
+
 
 class ReportDetails(View):
     authentication_classes = []
@@ -250,16 +257,21 @@ class ReportDetails(View):
         doc = SimpleDocTemplate(
             buffer, 
             pagesize=letter,
-            leftMargin=36,
-            rightMargin=36,
-            topMargin=36,
-            bottomMargin=36
+            leftMargin=25,
+            rightMargin=25,
+            topMargin=25,
+            bottomMargin=25
         )
         elements = []
         
         # Define styles
         styles = getSampleStyleSheet()
-        
+        # Import necessary modules if not already imported
+        from reportlab.lib.colors import Color
+
+        # Define Annamalai University colors
+        university_gold = Color(1, 0.85, 0, alpha=1)  # Gold #FFD700
+        university_navy = Color(0, 0.13, 0.28, alpha=1)  # Navy Blue #002147
         # Custom styles for elegant presentation
         title_style = ParagraphStyle(
             'DocumentTitle',
@@ -268,7 +280,7 @@ class ReportDetails(View):
             fontName='Helvetica-Bold',
             alignment=1,  # Center alignment
             spaceAfter=6,
-            textColor=colors.darkblue
+            textColor=university_gold 
         )
         
         subtitle_style = ParagraphStyle(
@@ -277,7 +289,7 @@ class ReportDetails(View):
             fontSize=14,
             fontName='Helvetica-Bold',
             alignment=1,  # Center alignment
-            spaceAfter=20,
+            spaceAfter=10,
             textColor=colors.darkblue
         )
         
@@ -294,9 +306,33 @@ class ReportDetails(View):
             borderRadius=None
         )
         
+        
+        # Add university logo from internet
+        logo_url = "https://ts2.mm.bing.net/th?id=OIP.STljN84T2Rdft8S2z8vG8wAAAA&pid=15.1"  # Replace with actual URL
+        try:
+            # Fetch image from URL
+            image_data = urlopen(logo_url).read()
+            # Create temporary file-like object
+            img_stream = BytesIO(image_data)
+            # Create reportlab Image directly from the stream
+            logo = Image(img_stream)
+            # Set a reasonable width while maintaining aspect ratio
+            logo.drawWidth = 70
+            # Calculate height to maintain aspect ratio
+            logo.drawHeight = logo.drawWidth
+            # Center the image
+            logo.hAlign = 'CENTER'
+            elements.append(logo)
+            elements.append(Spacer(1, 5))
+        except Exception as e:
+            # If logo loading fails, continue without the logo
+            print(f"Failed to load logo: {str(e)}")
+        
         # Add document title and subtitle
-        elements.append(Paragraph("STUDENT DETAILS REPORT", title_style))
+        elements.append(Paragraph("ANNAMALAI UNIVERSITY", title_style))
         elements.append(Paragraph("Department of Information Technology", subtitle_style))
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph("STUDENT DETAILS REPORT", title_style))
         
         # Add date and student info
         date_style = ParagraphStyle(
