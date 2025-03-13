@@ -26,7 +26,145 @@ from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
 import requests
 from datetime import datetime, timezone
+from django.shortcuts import render
+from django.views.decorators.csrf import ensure_csrf_cookie
+import requests
+from datetime import datetime, timezone
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.db import transaction
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.db import transaction
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.db import transaction, connection
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.db import transaction, connection
+from django.contrib.auth import get_user_model
+from studentnsn.models import (
+    PersonalInformation, SSLC, HSC, Examination, 
+    SemesterMarksheet, Hosteller, DiplomaStudent, DiplomaMark,
+    DiplomaMarksheet, Academics, PersonalDocuments, BankDetails,
+    BriefDetails, Scholarship, RejoinStudent, SSLCMarks, HSCMarks
+)
 
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.db import transaction, connection
+from django.contrib.auth import get_user_model
+
+def map_student_type(student_type):
+    """Map Student model student_type to PersonalInformation type_of_student"""
+    mapping = {
+        'regular': 0,    # Regular
+        'lateral': 1,    # Lateral Entry
+        'rejoin': 2     # Rejoin
+    }
+    return mapping.get(student_type, 0)  # Default to Regular if unknown
+
+@receiver(pre_save, sender=Student)
+def update_roll_numbers(sender, instance, **kwargs):
+    try:
+        # Get the old instance if it exists
+        old_instance = Student.objects.get(pk=instance.pk)
+        
+        # Check if any relevant fields have changed
+        roll_number_changed = old_instance.roll_number != instance.roll_number
+        prev_roll_changed = old_instance.previous_roll_number != instance.previous_roll_number
+        student_type_changed = old_instance.student_type != instance.student_type
+        
+        # If nothing has changed, do nothing
+        if not (roll_number_changed or prev_roll_changed or student_type_changed):
+            return
+            
+        # Start transaction to ensure all updates succeed or none do
+        with transaction.atomic():
+            # Handle roll_number change
+            if roll_number_changed:
+                old_roll = old_instance.roll_number
+                new_roll = instance.roll_number
+                
+                # Update User model
+                User = get_user_model()
+                try:
+                    user = User.objects.get(username=old_roll)
+                    user.username = new_roll
+                    user.save()
+                except User.DoesNotExist:
+                    pass
+                
+                # Temporarily disable foreign key checks
+                with connection.cursor() as cursor:
+                    cursor.execute('SET FOREIGN_KEY_CHECKS=0;')
+                
+                try:
+                    # Update all tables with direct roll_number fields
+                    StudentPassword.objects.filter(identifier=old_roll).update(identifier=new_roll)
+                    SSLCMarks.objects.filter(roll_number=old_roll).update(roll_number=new_roll)
+                    HSCMarks.objects.filter(roll_number=old_roll).update(roll_number=new_roll)
+                    Examination.objects.filter(roll_number=old_roll).update(roll_number=new_roll)
+                    SemesterMarksheet.objects.filter(roll_number=old_roll).update(roll_number=new_roll)
+                    DiplomaMark.objects.filter(roll_number=old_roll).update(roll_number=new_roll)
+                    DiplomaMarksheet.objects.filter(roll_number=old_roll).update(roll_number=new_roll)
+
+                    # Update PersonalInformation
+                    PersonalInformation.objects.filter(roll_number=old_roll).update(roll_number=new_roll)
+                    
+                    # Update all related OneToOne fields
+                    models_to_update = [
+                        Hosteller,
+                        Academics,
+                        PersonalDocuments,
+                        BankDetails,
+                        BriefDetails,
+                        Scholarship,
+                        RejoinStudent,
+                        SSLC,
+                        HSC,
+                        DiplomaStudent
+                    ]
+                    
+                    for model in models_to_update:
+                        model.objects.filter(roll_number_id=old_roll).update(roll_number_id=new_roll)
+                    
+                finally:
+                    # Re-enable foreign key checks
+                    with connection.cursor() as cursor:
+                        cursor.execute('SET FOREIGN_KEY_CHECKS=1;')
+            
+            # Get PersonalInformation instance for updates
+            try:
+                personal_info = PersonalInformation.objects.get(roll_number=instance.roll_number)
+                
+                # Handle previous_roll_number change
+                if prev_roll_changed:
+                    personal_info.previous_roll_number = instance.previous_roll_number
+                
+                # Handle student_type change
+                if student_type_changed:
+                    personal_info.type_of_student = map_student_type(instance.student_type)
+                
+                # Save if any changes were made
+                if prev_roll_changed or student_type_changed:
+                    personal_info.save()
+                    
+            except PersonalInformation.DoesNotExist:
+                pass
+            
+    except Student.DoesNotExist:
+        # This is a new instance, no need to update anything
+        pass
+
+    except Exception as e:
+        # Re-enable foreign key checks in case of any error
+        with connection.cursor() as cursor:
+            cursor.execute('SET FOREIGN_KEY_CHECKS=1;')
+        raise e
+    
 @ensure_csrf_cookie
 def home(request):
     context = {
